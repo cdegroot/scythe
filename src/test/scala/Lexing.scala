@@ -31,7 +31,18 @@ class Lexing extends ThriftLexers with FlatSpec with ShouldMatchers {
     implicit val parserToTest = identifier
 
     parsing("aValidIdentifier") should equal(Identifier("aValidIdentifier"))
+    parsing("another_valid_identifier") should equal(Identifier("another_valid_identifier"))
     assertFail("an invalid identifier")
+  }
+
+  they should "parse string literals, both with single and double quotes" in {
+    implicit val parserToTest = literal
+
+    parsing("'a valid single quoted string'") should equal(StringLiteral("a valid single quoted string"))
+    parsing("\"a valid double quoted string\"") should equal(StringLiteral("a valid double quoted string"))
+
+    assertFail("'missing closing quote")
+    assertFail("missing opening quote'")
   }
 
 }

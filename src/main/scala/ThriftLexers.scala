@@ -1,7 +1,8 @@
 import util.parsing.combinator.RegexParsers
 
-sealed abstract class ThriftLexerNode
-case class Identifier(name: String) extends ThriftLexerNode
+sealed abstract class Token
+case class Identifier(name: String) extends Token
+case class StringLiteral(value: String) extends Token
 
 /**
  * Lexical part of thrift IDL parsing.
@@ -18,17 +19,16 @@ trait ThriftLexers extends RegexParsers {
 //
 //  def constmap = "{" ~ (constvalue ~ ":" ~ constvalue ~ listseparator?)* ~ "}"
 //
-//  def literal: Parser[String] = ( "\"" ~ "[^\"]*"r ~ "\"" ) | ( "'" ~ "[^']*"r ~ "'" )
 
-  def identifier = regex("[a-zA-Z_][a-zA-Z0-0._]*"r) ^^ { case id => new Identifier(id) }
+  def literal = (( '\"' ~>  regex("[^\"]*"r) <~ '\"' ) | ( '\'' ~> regex("[^']*"r) <~ '\'' )) ^^ { new StringLiteral(_) }
 
-  // def stidentifier = (letter | "_") ~ (letter | digit | "." | "_" | "-")*
+  def identifier = regex("[a-zA-Z_][a-zA-Z0-0._]*"r) ^^ { new Identifier(_) }
+
+  // For Thrift compatibility, but we don't act on it
+  def stidentifier = regex("[a-zA-Z_][a-zA-Z0-0._-]*"r)
 
   // def listseparator = "," | ";"
 
-  // def letter = "[A-Za-z]"r
-
-  // def digit = "[0-9]"r
 
 }
 

@@ -45,4 +45,20 @@ class Lexing extends ThriftLexers with FlatSpec with ShouldMatchers {
     assertFail("missing opening quote'")
   }
 
+  they should "parse integer constants" in {
+    implicit val parserToTest = intconstant
+
+    parsing("0123") should equal(IntegerConstant(123))
+    parsing("-42") should equal(IntegerConstant(-42))
+
+    assertFail("a023")
+    assertFail("2-1")
+  }
+
+  they should "parse double constants" in {
+    implicit val parserToTest = doubleconstant
+
+    parsing("1.23") should equal(DoubleConstant(1.23))
+  }
+
 }

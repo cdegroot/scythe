@@ -3,6 +3,8 @@ import util.parsing.combinator.RegexParsers
 sealed abstract class Token
 case class Identifier(name: String) extends Token
 case class StringLiteral(value: String) extends Token
+case class IntegerConstant(value: Int) extends Token
+case class DoubleConstant(value: Double) extends Token
 
 /**
  * Lexical part of thrift IDL parsing.
@@ -11,9 +13,10 @@ trait ThriftLexers extends RegexParsers {
 //
 //  def constvalue = intconstant | doubleconstant | listeral | identifier | constlist | constmap
 //
-//  def intconstant = ("+" | "-")? ~ digit+
-//
-//  def doubleconstant = ("+" | "-")? ~ digit+ ~ ("." ~ digit+)? ~ (("E" | "e") ~ intconstant)?
+  def intconstant = regex("[+-]?[0-9]+"r) ^^ { case s: String => new IntegerConstant(s.toInt) }
+
+  def doubleconstant = regex("[+-]?[0-9]+(.?[0-9]+)?([Ee][0-9]+)?"r) ^^ { case s: String => new DoubleConstant(s.toDouble) }
+
 //
 //  def constlist = "[" ~ (constvalue ~ listseparator?)* ~ "]"
 //
@@ -28,7 +31,6 @@ trait ThriftLexers extends RegexParsers {
   def stidentifier = regex("[a-zA-Z_][a-zA-Z0-0._-]*"r)
 
   // def listseparator = "," | ";"
-
 
 }
 

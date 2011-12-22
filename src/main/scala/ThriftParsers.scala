@@ -1,6 +1,7 @@
 import util.parsing.combinator.RegexParsers
 
 trait ThriftParsers extends RegexParsers with ThriftLexers {
+  // note: we left the production rule names the same as in the Thrift IDL for easy reference
 
   // Parser from the Thrift IDL description page minus the Facebook xsd internal crap
 //  def document = header* ~ definition*

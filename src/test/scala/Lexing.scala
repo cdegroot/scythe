@@ -38,8 +38,8 @@ class Lexing extends ThriftLexers with FlatSpec with ShouldMatchers {
   they should "parse string literals, both with single and double quotes" in {
     implicit val parserToTest = literal
 
-    parsing("'a valid single quoted string'") should equal(StringLiteral("a valid single quoted string"))
-    parsing("\"a valid double quoted string\"") should equal(StringLiteral("a valid double quoted string"))
+    parsing("'a valid single quoted string'") should equal(StringConstant("a valid single quoted string"))
+    parsing("\"a valid double quoted string\"") should equal(StringConstant("a valid double quoted string"))
 
     assertFail("'missing closing quote")
     assertFail("missing opening quote'")
@@ -65,5 +65,14 @@ class Lexing extends ThriftLexers with FlatSpec with ShouldMatchers {
     implicit val parserToTest = constlist
 
     parsing("[1, 2, 3]") should equal(ListConstant(List(IntegerConstant(1), IntegerConstant(2), IntegerConstant(3))))
+  }
+
+  they should "parse constant maps" in {
+    implicit val parserToTest = constmap
+
+    val expectedList = List((1, "foo"), (2, "bar"))
+    val expectedConstantsList = expectedList.map(t => (IntegerConstant(t._1), StringConstant(t._2)))
+    val expectedConstantMap : Map[Constant,Constant] = Map(expectedConstantsList : _*)
+    parsing("{1:'foo', 2:'bar'}") should equal(MapConstant(expectedConstantMap))
   }
 }

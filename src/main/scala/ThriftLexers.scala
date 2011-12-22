@@ -1,24 +1,26 @@
 import util.parsing.combinator.RegexParsers
 
 sealed abstract class Token
-case class Identifier(name: String) extends Token
-case class StringLiteral(value: String) extends Token
-case class IntegerConstant(value: Int) extends Token
-case class DoubleConstant(value: Double) extends Token
+abstract class Constant extends Token
+case class Identifier(name: String) extends Constant
+case class StringLiteral(value: String) extends Constant
+case class IntegerConstant(value: Int) extends Constant
+case class DoubleConstant(value: Double) extends Constant
+case class ListConstant(value: List[Constant]) extends Constant
 
 /**
  * Lexical part of thrift IDL parsing.
  */
 trait ThriftLexers extends RegexParsers {
-//
-//  def constvalue = intconstant | doubleconstant | listeral | identifier | constlist | constmap
-//
+
+  def constvalue : Parser[Constant] = intconstant | doubleconstant | literal | identifier | constlist // | constmap
+
   def intconstant = regex("[+-]?[0-9]+"r) ^^ { case s: String => new IntegerConstant(s.toInt) }
 
   def doubleconstant = regex("[+-]?[0-9]+(.?[0-9]+)?([Ee][0-9]+)?"r) ^^ { case s: String => new DoubleConstant(s.toDouble) }
 
-//
-//  def constlist = "[" ~ (constvalue ~ listseparator?)* ~ "]"
+  def constlist : Parser[ListConstant] = '[' ~> repsep(constvalue, listseparator) <~ ']' ^^ { new ListConstant(_) }
+
 //
 //  def constmap = "{" ~ (constvalue ~ ":" ~ constvalue ~ listseparator?)* ~ "}"
 //
@@ -30,7 +32,7 @@ trait ThriftLexers extends RegexParsers {
   // For Thrift compatibility, but we don't act on it
   def stidentifier = regex("[a-zA-Z_][a-zA-Z0-0._-]*"r)
 
-  // def listseparator = "," | ";"
+  def listseparator  = elem(',') | elem(';')
 
 }
 

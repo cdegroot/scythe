@@ -61,4 +61,9 @@ class Lexing extends ThriftLexers with FlatSpec with ShouldMatchers {
     parsing("1.23") should equal(DoubleConstant(1.23))
   }
 
+  they should "parse constant lists" in {
+    implicit val parserToTest = constlist
+
+    parsing("[1, 2, 3]") should equal(ListConstant(List(IntegerConstant(1), IntegerConstant(2), IntegerConstant(3))))
+  }
 }

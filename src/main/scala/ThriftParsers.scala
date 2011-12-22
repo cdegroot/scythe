@@ -1,5 +1,10 @@
 import util.parsing.combinator.RegexParsers
 
+sealed abstract class Node
+abstract class Type extends Node
+object StringType extends Type
+case class ListType(t : Type) extends Type
+
 trait ThriftParsers extends RegexParsers with ThriftLexers {
   // note: we left the production rule names the same as in the Thrift IDL for easy reference
 
@@ -49,19 +54,23 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
 //  def throws = "throws" ~ "(" ~ field* ~ ")"
 //
 //  def fieldtype = identifier | basetype | containertype
+    def fieldtype = basetype
+
 //
 //  def definitiontype = basetype | containertype
 //
 //  def basetype = "bool" | "byte" | "i16" | "i32" | "i64" | "double" | "string" | "binary" | "slist"
-//
+    def basetype = literal("string") ^^^ { StringType }
+
 //  def containertype = maptype | settype | listtype
 //
 //  def maptype = "map" ~ cpptype? ~ "<" ~ fieldtype ~ "," ~ fieldtype ~ ">"
 //
 //  def settype = "set" ~ cpptype? ~ "<" ~ fieldtype ~ ">"
 //
-//  def listtype = "list" ~ "<" ~ fieldtype ~ ">" ~ cpptype?
-//
-//  def cpptype = "cpp_type" ~ literal
+    def listtype = (literal("list") ~ elem('<') ~> fieldtype <~ elem('>') ~ opt(cpptype)) ^^ { new ListType(_) }
+
+    // Defined for compatibility, but unused
+    def cpptype = literal("cpp_type") ~ literal
 }
 

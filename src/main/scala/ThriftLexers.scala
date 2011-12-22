@@ -13,8 +13,8 @@ case class MapConstant(value: Map[Constant,Constant]) extends Constant
  * Lexical part of thrift IDL parsing.
  */
 trait ThriftLexers extends RegexParsers {
-  // note: we left the production rule names the same as in the Thrift IDL for easy reference
-
+  // note: we left the production rule names the same as in the Thrift IDL for easy reference. We do
+  // clean naming a bit in the Token hierarchy we return.
 
   def constvalue : Parser[Constant] = intconstant | doubleconstant | literal | identifier | constlist | constmap
 

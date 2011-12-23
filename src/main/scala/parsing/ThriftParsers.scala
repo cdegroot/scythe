@@ -4,7 +4,7 @@ import util.parsing.combinator.RegexParsers
 
 sealed abstract class Node
 abstract class Type extends Node
-// TSTTCPW - we use type objects instead of classes for now.
+// TSTTCPW - we use type objects instead of classes for now. We'll see how that works
 object BoolType extends Type
 object ByteType extends Type
 object Int16Type extends Type

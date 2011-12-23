@@ -10,9 +10,12 @@ case class ListConstant(value: List[Constant]) extends Constant
 case class MapConstant(value: Map[Constant,Constant]) extends Constant
 
 /**
- * Lexical part of thrift IDL parsing.
+ * Lexical part of thrift IDL parsing. Not really a lexer, this is just the low
+ * level bit of the whole parser, mostly separated out to make code and test source
+ * shorter
  */
 trait ThriftLexers extends RegexParsers {
+
   // note: we left the production rule names the same as in the Thrift IDL for easy reference. We do
   // clean naming a bit in the Token hierarchy we return.
 

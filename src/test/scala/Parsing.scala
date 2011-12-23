@@ -156,11 +156,14 @@ class Parsing extends FlatSpecForParsers with ThriftParsers {
     implicit val parserToTest = document
 
     parsing("""
-      include 'common.thrift'
+      include 'common.thrift' // Include stuff
       namespace java com.evrl.test.namespace
 
+      /* My typedef. Is very nice */
       typedef map<i32, string> myMap;
       enum myEnum { bar, baz = 3 };
+
+      /** This is the meat - the service */
       service myService {
         void hello(),
         i32 buzzer(1: i32 length, 2: bool loud)

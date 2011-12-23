@@ -29,6 +29,8 @@ class Parsing extends FlatSpecForParsers with ThriftParsers {
   they should "parse various field definitions" in {
     implicit val parserToTest = field
     
-    parsing("i32 foo") should equal(Field(Int32Type, Identifier("foo")))
+    parsing("i32 foo") should equal(Field(Int32Type, Identifier("foo"), None, false))
+    parsing("1: bool bar") should equal(Field(BoolType, Identifier("bar"), Some(IntegerConstant(1)), false))
+    parsing("2: required string quux") should equal(Field(StringType, Identifier("quux"), Some(IntegerConstant(2)), true))
   }
 }

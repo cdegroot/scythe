@@ -19,7 +19,7 @@ case class MapType(keyType: Type,  valueType: Type) extends Type
 case class ComplexType(t: Identifier) extends Type
 
 case class Field(t: Type,  n: Identifier, id: Option[IntegerConstant], required: Boolean) extends Node
-case class Function(t: Type,  n: Identifier,  args: List[Field]) extends Node
+case class Function(t: Type,  n: Identifier,  args: List[Field], throws: List[Field], isOneway: Boolean) extends Node
 
 trait ThriftParsers extends RegexParsers with ThriftLexers {
   // note: we left the production rule names the same as in the Thrift IDL for easy reference
@@ -69,14 +69,20 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
 
 //  def function = "oneway"? ~ functiontype ~ identifier ~ "(" ~ field* ~ ")" ~ throws? ~ listseparator
 
-    def function: Parser[Function] = functiontype ~ identifier ~ "(" ~ repsep(field, ",") ~ ")" ^^ {
-      case ftype~fid~"("~fields~")" => new Function(ftype, fid, fields)
+    def function: Parser[Function] = functionOneWay ~ functiontype ~ identifier ~ "(" ~ repsep(field, listseparator) ~ ")" ~ opt(throws) ^^ {
+      case fow~ftype~fid~"("~fields~")"~throwsOpt =>
+        val throwsList = throwsOpt.getOrElse(List())
+        new Function(ftype, fid, fields, throwsList, fow)
     }
 
+    def functionOneWay: Parser[Boolean] = opt("oneway") ^^ {
+      case Some(x) => true
+      case None => false }
+
     def functiontype: Parser[Type] =  "void" ^^^ { VoidType } | fieldtype
-//
-//  def throws = "throws" ~ "(" ~ field* ~ ")"
-//
+
+    def throws: Parser[List[Field]] = "throws" ~ "(" ~> repsep(field, listseparator) <~ ")" ^^ { case list => list }
+
     def fieldtype: Parser[Type] = basetype | containertype | identifier ^^ { ComplexType(_)}
 
     def definitiontype = basetype | containertype

@@ -37,9 +37,13 @@ class Parsing extends FlatSpecForParsers with ThriftParsers {
   they should "parse function declarations" in {
     implicit val parserToTest = function
 
-    parsing("void hello()") should equal(Function(VoidType, Identifier("hello"), List()))
+    parsing("void hello()") should equal(Function(VoidType, Identifier("hello"), List(), List(), false))
+    parsing("oneway void hello()") should equal(Function(VoidType, Identifier("hello"), List(), List(), true))
     parsing("i32 buzzer(1: i32 length, 2: bool loud)") should equal(Function(Int32Type, Identifier("buzzer"),
       List(Field(Int32Type, Identifier("length"), Some(IntegerConstant(1)), false),
-           Field(BoolType, Identifier("loud"), Some(IntegerConstant(2)), false))))
+           Field(BoolType, Identifier("loud"), Some(IntegerConstant(2)), false)), List(), false))
+
+    parsing("void hello() throws (1: FooException foo)") should equal(Function(VoidType, Identifier("hello"), List(),
+      List(Field(ComplexType(Identifier("FooException")), Identifier("foo"), Some(IntegerConstant(1)), false)), false))
   }
 }

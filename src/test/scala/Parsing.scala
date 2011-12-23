@@ -69,6 +69,14 @@ class Parsing extends FlatSpecForParsers with ThriftParsers {
         void hello(),
         i32 buzzer(1: i32 length, 2: bool loud)
       }""") should equal(Service("test", Some("base"), List(helloFunctionAst, buzzerFunctionAst)))
+  }
 
+  they should "parse exception definitions" in {
+    implicit val parserToTest = exception
+
+    parsing("exception foo {}") should equal(Exception("foo", List()));
+    parsing("exception foo {1: i32 why, 2: bool fatal}") should equal(Exception("foo",
+      List(Field(Int32Type, "why", Some(IntegerConstant(1)), false),
+           Field(BoolType, "fatal", Some(IntegerConstant(2)), false))))
   }
 }

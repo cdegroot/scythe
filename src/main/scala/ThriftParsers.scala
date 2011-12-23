@@ -21,6 +21,7 @@ case class ComplexType(t: String) extends Type
 case class Field(t: Type,  n: String, id: Option[IntegerConstant], required: Boolean) extends Node
 case class Function(t: Type,  n: String,  args: List[Field], throws: List[Field], isOneway: Boolean) extends Node
 case class Service(n: String,  baseService: Option[String],  functions: List[Function]) extends Node
+case class Exception(n: String, args: List[Field]) extends Node
 
 trait ThriftParsers extends RegexParsers with ThriftLexers {
   // note: we left the production rule names the same as in the Thrift IDL for easy reference
@@ -54,8 +55,10 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
 //
 //  def struct = "struct" ~ identifier ~  "{" ~ field* ~ "}"
 //
-//  def exception = "exception" ~ identifier ~ "{" ~ field* ~ "}"
-//
+    def exception: Parser[Exception] = "exception" ~> identifier ~ "{" ~ repsep(field, listseparator) ~ "}" ^^ {
+      case id~"{"~fields~"}" => new Exception(id.name, fields)
+    }
+
     def service: Parser[Service] = "service" ~ identifier ~ opt("extends" ~> identifier) ~ "{" ~ repsep(function, listseparator) ~ "}" ^^ {
       case "service"~sname~extendsOpt~"{"~funlist~"}" =>
         val extendsName = extendsOpt.flatMap(id => Some(id.name))

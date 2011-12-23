@@ -79,4 +79,19 @@ class Parsing extends FlatSpecForParsers with ThriftParsers {
       List(Field(Int32Type, "why", Some(IntegerConstant(1)), false),
            Field(BoolType, "fatal", Some(IntegerConstant(2)), false))))
   }
+
+  they should "parse struct definitions" in {
+    implicit val parserToTest = struct
+
+    parsing("struct foo {1: i32 why, 2: bool fatal}") should equal(Struct("foo",
+      List(Field(Int32Type, "why", Some(IntegerConstant(1)), false),
+           Field(BoolType, "fatal", Some(IntegerConstant(2)), false))))
+  }
+
+  they should "parse enum definitions" in {
+    implicit val parserToTest = enum
+
+    parsing("enum foo { bar, baz = 3 }") should equal(Enum("foo",
+      List(EnumElem("bar", None), EnumElem("baz", Some(3)))))
+  }
 }

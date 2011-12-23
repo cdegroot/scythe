@@ -22,6 +22,9 @@ case class Field(t: Type,  n: String, id: Option[IntegerConstant], required: Boo
 case class Function(t: Type,  n: String,  args: List[Field], throws: List[Field], isOneway: Boolean) extends Node
 case class Service(n: String,  baseService: Option[String],  functions: List[Function]) extends Node
 case class Exception(n: String, args: List[Field]) extends Node
+case class Struct(n: String,  args: List[Field]) extends Node
+case class Enum(n: String,  elems: List[EnumElem]) extends Node
+case class EnumElem(n: String,  value: Option[Int]) extends Node
 
 trait ThriftParsers extends RegexParsers with ThriftLexers {
   // note: we left the production rule names the same as in the Thrift IDL for easy reference
@@ -49,12 +52,21 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
 //
 //  def typedef = "typedef" ~ definitiontype ~ identifier
 //
-//  def enum = "enum" ~ identifier ~ "{" ~ (identifier ~ ("=" ~ intconstant)? ~ listseparator?)* ~ "}"
-//
-//  def senum = "senum" ~ identifier ~ "{" ~ (literal ~ listseparator?)* ~ "}"
-//
-//  def struct = "struct" ~ identifier ~  "{" ~ field* ~ "}"
-//
+    def enum: Parser[Enum] = "enum" ~> identifier ~ "{" ~ zeroOrMoreOf(enumElem) ~ "}" ^^ {
+      case id~"{"~elems~"}" => new Enum(id.name, elems)
+    }
+
+    def enumElem: Parser[EnumElem] = identifier ~ opt("=" ~> intconstant) ^^ {
+      case id~constOpt => new EnumElem(id.name, constOpt.flatMap(const => Some(const.value)))
+    }
+
+    // what is senum? Ignore :)
+    def senum: Parser[Any] = "senum" ~ identifier ~ "{" ~ zeroOrMoreOf(literal) ~ "}"
+
+    def struct: Parser[Struct] = "struct" ~> identifier ~  "{" ~ zeroOrMoreOf(field) ~ "}" ^^ {
+      case id~"{"~fields~"}" => new Struct(id.name, fields)
+    }
+
     def exception: Parser[Exception] = "exception" ~> identifier ~ "{" ~ zeroOrMoreOf(field) ~ "}" ^^ {
       case id~"{"~fields~"}" => new Exception(id.name, fields)
     }

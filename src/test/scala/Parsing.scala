@@ -55,14 +55,18 @@ class Parsing extends FlatSpecForParsers with ThriftParsers {
       List(Field(ComplexType("FooException"), "foo", Some(IntegerConstant(1)), false)), false))
   }
 
+  def myServiceAst: Service = {
+    Service("myService", None, List(helloFunctionAst, buzzerFunctionAst))
+  }
+
   they should "parse service definitions" in {
     implicit val parserToTest = service
 
     parsing("""
-      service test {
+      service myService {
         void hello(),
         i32 buzzer(1: i32 length, 2: bool loud)
-      }""") should equal(Service("test", None, List(helloFunctionAst, buzzerFunctionAst)))
+      }""") should equal(myServiceAst)
 
     parsing("""
       service test extends base {
@@ -92,23 +96,44 @@ class Parsing extends FlatSpecForParsers with ThriftParsers {
     parsing("struct foo {1: i32 why, 2: bool fatal}") should equal(fooStructAst)
   }
 
+  def myEnumAst: Enum = {
+    Enum("myEnum",
+      List(EnumElem("bar", None), EnumElem("baz", Some(3))))
+  }
+
   they should "parse enum definitions" in {
     implicit val parserToTest = enum
 
-    parsing("enum foo { bar, baz = 3 }") should equal(Enum("foo",
-      List(EnumElem("bar", None), EnumElem("baz", Some(3)))))
+    parsing("enum myEnum { bar, baz = 3 }") should equal(myEnumAst)
+  }
+
+  def myMapAst: Typedef = {
+    Typedef("myMap", MapType(Int32Type, StringType))
   }
 
   they should "parse typedefs" in {
     implicit val parserToTest = typedef
 
     parsing("typedef i32 myInt") should equal(Typedef("myInt", Int32Type))
-    parsing("typedef map<i32, string> myMap") should equal(Typedef("myMap", MapType(Int32Type, StringType)))
+    parsing("typedef map<i32, string> myMap") should equal(myMapAst)
   }
 
   they should "parse const definitions" in {
     implicit val parserToTest = const
 
     parsing("const i32 foo = 1") should equal(Const("foo", Int32Type, IntegerConstant(1)))
+  }
+
+  they should "whole thrift files" in {
+    implicit val parserToTest = document
+
+    parsing("""
+      typedef map<i32, string> myMap;
+      enum foo { bar, baz = 3 };
+      service myService {
+        void hello(),
+        i32 buzzer(1: i32 length, 2: bool loud)
+      }
+    """) should equal(Document(List(myMapAst, myEnumAst, myServiceAst)))
   }
 }

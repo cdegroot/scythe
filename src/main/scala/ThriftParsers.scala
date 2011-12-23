@@ -20,19 +20,22 @@ case class ComplexType(t: String) extends Type
 
 case class Field(t: Type,  n: String, id: Option[IntegerConstant], required: Boolean) extends Node
 case class Function(t: Type,  n: String,  args: List[Field], throws: List[Field], isOneway: Boolean) extends Node
-case class Service(n: String,  baseService: Option[String],  functions: List[Function]) extends Node
-case class Exception(n: String, args: List[Field]) extends Node
-case class Struct(n: String,  args: List[Field]) extends Node
-case class Enum(n: String,  elems: List[EnumElem]) extends Node
+abstract class ToplevelNode extends Node // Mostly there for documentation
+case class Service(n: String,  baseService: Option[String],  functions: List[Function]) extends ToplevelNode
+case class Exception(n: String, args: List[Field]) extends ToplevelNode
+case class Struct(n: String,  args: List[Field]) extends ToplevelNode
+case class Enum(n: String,  elems: List[EnumElem]) extends ToplevelNode
 case class EnumElem(n: String,  value: Option[Int]) extends Node
-case class Typedef(n: String,  t: Type) extends Node
-case class Const(n: String,  t: Type,  value: Constant) extends Node
+case class Typedef(n: String,  t: Type) extends ToplevelNode
+case class Const(n: String,  t: Type,  value: Constant) extends ToplevelNode
+case class Document(definitions: List[ToplevelNode])
 
 trait ThriftParsers extends RegexParsers with ThriftLexers {
   // note: we left the production rule names the same as in the Thrift IDL for easy reference
 
   // Parser from the Thrift IDL description page minus the Facebook xsd internal crap
 //  def document = header* ~ definition*
+    def document: Parser[Document] = zeroOrMoreOf(definition) ^^ { new Document(_) }
 //
 //  def header = (include | cppinclude | namespace)
 //
@@ -48,8 +51,8 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
 //
 //  def namespacescope = "*" | "cpp" | "java" | "py" | "perl" | "rb" | "cocoa" | "csharp"
 //
-//  def definition = const | typedef | enum | senum | struct | exception | service
-//
+    def definition: Parser[ToplevelNode] = const | typedef | enum | struct | exception | service
+
     def const: Parser[Const] = "const" ~> fieldtype ~ identifier ~ "=" ~ constvalue ^^ {
       case ftype~id~"="~value => new Const(id.name, ftype, value)
     }
@@ -67,7 +70,7 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
     }
 
     // what is senum? Ignore :)
-    def senum: Parser[Any] = "senum" ~ identifier ~ "{" ~ zeroOrMoreOf(literal) ~ "}"
+    //def senum: Parser[Any] = "senum" ~ identifier ~ "{" ~ zeroOrMoreOf(literal) ~ "}"
 
     def struct: Parser[Struct] = "struct" ~> identifier ~  "{" ~ zeroOrMoreOf(field) ~ "}" ^^ {
       case id~"{"~fields~"}" => new Struct(id.name, fields)

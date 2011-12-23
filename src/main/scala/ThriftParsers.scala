@@ -2,7 +2,16 @@ import util.parsing.combinator.RegexParsers
 
 sealed abstract class Node
 abstract class Type extends Node
+// TSTTCPW - we use type objects instead of classes for now.
+object BoolType extends Type
+object ByteType extends Type
+object Int16Type extends Type
+object Int32Type extends Type
+object Int64Type extends Type
+object DoubleType extends Type
 object StringType extends Type
+object BinaryType extends Type
+object SlistType extends Type
 case class ListType(t : Type) extends Type
 
 trait ThriftParsers extends RegexParsers with ThriftLexers {
@@ -59,9 +68,12 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
 //
 //  def definitiontype = basetype | containertype
 //
-//  def basetype = "bool" | "byte" | "i16" | "i32" | "i64" | "double" | "string" | "binary" | "slist"
-    def basetype = literal("string") ^^^ { StringType }
-
+    def basetype = {
+      literal("bool") ^^^ { BoolType } | literal("byte") ^^^ { ByteType } | literal("i16") ^^^ { Int16Type } |
+      literal("i32") ^^^ { Int32Type } | literal("i64") ^^^ { Int64Type } | literal("double") ^^^ { DoubleType } |
+      literal("string") ^^^ { StringType } | literal("binary") ^^^ { BinaryType } | literal("slist") ^^^ { SlistType }
+    }
+  
 //  def containertype = maptype | settype | listtype
 //
 //  def maptype = "map" ~ cpptype? ~ "<" ~ fieldtype ~ "," ~ fieldtype ~ ">"

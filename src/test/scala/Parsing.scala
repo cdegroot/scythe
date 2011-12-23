@@ -7,4 +7,10 @@ class Parsing extends FlatSpecForParsers with ThriftParsers {
     parsing("list<string>") should equal(ListType(StringType))
   }
 
+  they should "parse various primitive types (incomplete list)" in {
+    implicit val parserToTest = basetype
+    
+    parsing("i64") should equal(Int64Type)
+    parsing("bool") should equal(BoolType)
+  }
 }

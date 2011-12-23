@@ -12,8 +12,10 @@ object DoubleType extends Type
 object StringType extends Type
 object BinaryType extends Type
 object SlistType extends Type
-case class ListType(t : Type) extends Type
-case class SetType(t : Type) extends Type
+case class ListType(t: Type) extends Type
+case class SetType(t: Type) extends Type
+case class MapType(keyType: Type,  valueType: Type) extends Type
+case class ComplexType(t: Identifier) extends Type
 
 trait ThriftParsers extends RegexParsers with ThriftLexers {
   // note: we left the production rule names the same as in the Thrift IDL for easy reference
@@ -63,22 +65,21 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
 //
 //  def throws = "throws" ~ "(" ~ field* ~ ")"
 //
-//  def fieldtype = identifier | basetype | containertype
-    def fieldtype = basetype
+    def fieldtype: Parser[Type] = basetype | containertype | identifier ^^ { ComplexType(_)}
 
-//
-//  def definitiontype = basetype | containertype
-//
+    def definitiontype = basetype | containertype
+
     def basetype = {
       literal("bool") ^^^ { BoolType } | literal("byte") ^^^ { ByteType } | literal("i16") ^^^ { Int16Type } |
       literal("i32") ^^^ { Int32Type } | literal("i64") ^^^ { Int64Type } | literal("double") ^^^ { DoubleType } |
       literal("string") ^^^ { StringType } | literal("binary") ^^^ { BinaryType } | literal("slist") ^^^ { SlistType }
     }
   
-//  def containertype = maptype | settype | listtype
-//
-//  def maptype = "map" ~ cpptype? ~ "<" ~ fieldtype ~ "," ~ fieldtype ~ ">"
-//
+    def containertype = maptype | settype | listtype
+
+    def maptype = ((literal("map") ~ opt(cpptype) ~ elem('<') ~> fieldtype <~ elem(',')) ~ fieldtype <~ elem('>')) ^^
+      { case v => new MapType(v._1, v._2) }
+
     def settype = (literal("set") ~ opt(cpptype) ~ elem('<') ~> fieldtype <~ elem('>')) ^^ { new SetType(_) }
 
     def listtype = (literal("list") ~ elem('<') ~> fieldtype <~ elem('>') ~ opt(cpptype)) ^^ { new ListType(_) }

@@ -19,4 +19,10 @@ class Parsing extends FlatSpecForParsers with ThriftParsers {
     
     parsing("set<double>") should equal(SetType(DoubleType))
   }
+  
+  they should "parse a map definition" in {
+    implicit val parserToTest = maptype
+    
+    parsing("map<i32,string>") should equal(MapType(Int32Type, StringType))
+  }
 }

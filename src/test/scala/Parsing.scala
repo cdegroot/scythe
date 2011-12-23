@@ -25,4 +25,10 @@ class Parsing extends FlatSpecForParsers with ThriftParsers {
     
     parsing("map<i32,string>") should equal(MapType(Int32Type, StringType))
   }
+  
+  they should "parse various field definitions" in {
+    implicit val parserToTest = field
+    
+    parsing("i32 foo") should equal(Field(Int32Type, Identifier("foo")))
+  }
 }

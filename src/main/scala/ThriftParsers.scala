@@ -17,6 +17,8 @@ case class SetType(t: Type) extends Type
 case class MapType(keyType: Type,  valueType: Type) extends Type
 case class ComplexType(t: Identifier) extends Type
 
+case class Field(t: Type,  n: Identifier) extends Node
+
 trait ThriftParsers extends RegexParsers with ThriftLexers {
   // note: we left the production rule names the same as in the Thrift IDL for easy reference
 
@@ -53,12 +55,13 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
 //
 //  def service = "service" ~ identifier ~ ( "extends" ~ identifier)? ~ "{" ~ function* ~ "}"
 //
-//  def field = fieldid? ~ fieldreq? ~ fieldtype ~ identifier ~ ("=" ~ constvalue)? ~ listseparator?
-//
-//  def fieldid = intconstant ~ ":"
-//
-//  def fieldreq = "required" | "optional"
-//
+    //def field = opt(fieldid) ~ opt(fieldreq) ~ fieldtype ~ identifier ~ opt("=" ~> constvalue)
+    def field = fieldtype ~ identifier ^^ { case v => new Field(v._1, v._2) }
+
+    // def fieldid = intconstant <~ ":"
+
+    // def fieldreq = "required" ^^ { true } | "optional" ^^ { false }
+
 //  def function = "oneway"? ~ functiontype ~ identifier ~ "(" ~ field* ~ ")" ~ throws? ~ listseparator
 //
 //  def functiontype = fieldtype | "void"

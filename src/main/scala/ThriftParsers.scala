@@ -12,12 +12,14 @@ object DoubleType extends Type
 object StringType extends Type
 object BinaryType extends Type
 object SlistType extends Type
+object VoidType extends Type
 case class ListType(t: Type) extends Type
 case class SetType(t: Type) extends Type
 case class MapType(keyType: Type,  valueType: Type) extends Type
 case class ComplexType(t: Identifier) extends Type
 
 case class Field(t: Type,  n: Identifier, id: Option[IntegerConstant], required: Boolean) extends Node
+case class Function(t: Type,  n: Identifier,  args: List[Field]) extends Node
 
 trait ThriftParsers extends RegexParsers with ThriftLexers {
   // note: we left the production rule names the same as in the Thrift IDL for easy reference
@@ -55,7 +57,7 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
 //
 //  def service = "service" ~ identifier ~ ( "extends" ~ identifier)? ~ "{" ~ function* ~ "}"
 //
-    //def field = opt(fieldid) ~ opt(fieldreq) ~ fieldtype ~ identifier ~ opt("=" ~> constvalue)
+
     def field : Parser[Field] = opt(fieldid) ~ opt(fieldreq) ~ fieldtype ~ identifier ^^ {
       case fid~freq~ftype~fname =>
         val required = freq.getOrElse(false)
@@ -66,8 +68,12 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
     def fieldreq: Parser[Boolean] = "required" ^^^ { true } | "optional" ^^^ { false }
 
 //  def function = "oneway"? ~ functiontype ~ identifier ~ "(" ~ field* ~ ")" ~ throws? ~ listseparator
-//
-//  def functiontype = fieldtype | "void"
+
+    def function: Parser[Function] = functiontype ~ identifier ~ "(" ~ repsep(field, ",") ~ ")" ^^ {
+      case ftype~fid~"("~fields~")" => new Function(ftype, fid, fields)
+    }
+
+    def functiontype: Parser[Type] =  "void" ^^^ { VoidType } | fieldtype
 //
 //  def throws = "throws" ~ "(" ~ field* ~ ")"
 //

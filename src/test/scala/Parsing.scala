@@ -33,4 +33,13 @@ class Parsing extends FlatSpecForParsers with ThriftParsers {
     parsing("1: bool bar") should equal(Field(BoolType, Identifier("bar"), Some(IntegerConstant(1)), false))
     parsing("2: required string quux") should equal(Field(StringType, Identifier("quux"), Some(IntegerConstant(2)), true))
   }
+
+  they should "parse function declarations" in {
+    implicit val parserToTest = function
+
+    parsing("void hello()") should equal(Function(VoidType, Identifier("hello"), List()))
+    parsing("i32 buzzer(1: i32 length, 2: bool loud)") should equal(Function(Int32Type, Identifier("buzzer"),
+      List(Field(Int32Type, Identifier("length"), Some(IntegerConstant(1)), false),
+           Field(BoolType, Identifier("loud"), Some(IntegerConstant(2)), false))))
+  }
 }

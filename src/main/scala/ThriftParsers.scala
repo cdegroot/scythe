@@ -16,10 +16,10 @@ object VoidType extends Type
 case class ListType(t: Type) extends Type
 case class SetType(t: Type) extends Type
 case class MapType(keyType: Type,  valueType: Type) extends Type
-case class ComplexType(t: Identifier) extends Type
+case class ComplexType(t: String) extends Type
 
-case class Field(t: Type,  n: Identifier, id: Option[IntegerConstant], required: Boolean) extends Node
-case class Function(t: Type,  n: Identifier,  args: List[Field], throws: List[Field], isOneway: Boolean) extends Node
+case class Field(t: Type,  n: String, id: Option[IntegerConstant], required: Boolean) extends Node
+case class Function(t: Type,  n: String,  args: List[Field], throws: List[Field], isOneway: Boolean) extends Node
 
 trait ThriftParsers extends RegexParsers with ThriftLexers {
   // note: we left the production rule names the same as in the Thrift IDL for easy reference
@@ -61,18 +61,16 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
     def field : Parser[Field] = opt(fieldid) ~ opt(fieldreq) ~ fieldtype ~ identifier ^^ {
       case fid~freq~ftype~fname =>
         val required = freq.getOrElse(false)
-        new Field(ftype, fname, fid, required) }
+        new Field(ftype, fname.name, fid, required) }
 
     def fieldid: Parser[IntegerConstant] = intconstant <~ ":"
 
     def fieldreq: Parser[Boolean] = "required" ^^^ { true } | "optional" ^^^ { false }
 
-//  def function = "oneway"? ~ functiontype ~ identifier ~ "(" ~ field* ~ ")" ~ throws? ~ listseparator
-
     def function: Parser[Function] = functionOneWay ~ functiontype ~ identifier ~ "(" ~ repsep(field, listseparator) ~ ")" ~ opt(throws) ^^ {
       case fow~ftype~fid~"("~fields~")"~throwsOpt =>
         val throwsList = throwsOpt.getOrElse(List())
-        new Function(ftype, fid, fields, throwsList, fow)
+        new Function(ftype, fid.name, fields, throwsList, fow)
     }
 
     def functionOneWay: Parser[Boolean] = opt("oneway") ^^ {
@@ -83,7 +81,7 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
 
     def throws: Parser[List[Field]] = "throws" ~ "(" ~> repsep(field, listseparator) <~ ")" ^^ { case list => list }
 
-    def fieldtype: Parser[Type] = basetype | containertype | identifier ^^ { ComplexType(_)}
+    def fieldtype: Parser[Type] = basetype | containertype | identifier ^^ { case id => ComplexType(id.name)}
 
     def definitiontype = basetype | containertype
 

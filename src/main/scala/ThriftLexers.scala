@@ -26,7 +26,7 @@ trait ThriftLexers extends RegexParsers {
 
   def constmap = '{' ~> repsep(constmapelem, listseparator?) <~ '}' ^^ { case l: List[(Constant,Constant)] => new MapConstant(Map(l: _* )) }
 
-  def constmapelem : Parser[(Constant,Constant)] = (constvalue <~ ':') ~ constvalue ^^ { case v => (v._1, v._2) }
+  def constmapelem : Parser[(Constant,Constant)] = (constvalue <~ ':') ~ constvalue ^^ { case key~value => (key, value) }
 
   def literal = (( '\"' ~>  regex("[^\"]*"r) <~ '\"' ) | ( '\'' ~> regex("[^']*"r) <~ '\'' )) ^^ { new StringConstant(_) }
 

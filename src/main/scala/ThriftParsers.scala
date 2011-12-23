@@ -56,9 +56,9 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
 //  def service = "service" ~ identifier ~ ( "extends" ~ identifier)? ~ "{" ~ function* ~ "}"
 //
     //def field = opt(fieldid) ~ opt(fieldreq) ~ fieldtype ~ identifier ~ opt("=" ~> constvalue)
-    def field = fieldtype ~ identifier ^^ { case v => new Field(v._1, v._2) }
+    def field : Parser[Field] = opt(fieldid) ~ fieldtype ~ identifier ^^ { case fid~ftype~fname => new Field(ftype, fname) }
 
-    // def fieldid = intconstant <~ ":"
+    def fieldid = intconstant <~ ":"
 
     // def fieldreq = "required" ^^ { true } | "optional" ^^ { false }
 
@@ -72,22 +72,22 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
 
     def definitiontype = basetype | containertype
 
-    def basetype = {
-      literal("bool") ^^^ { BoolType } | literal("byte") ^^^ { ByteType } | literal("i16") ^^^ { Int16Type } |
-      literal("i32") ^^^ { Int32Type } | literal("i64") ^^^ { Int64Type } | literal("double") ^^^ { DoubleType } |
-      literal("string") ^^^ { StringType } | literal("binary") ^^^ { BinaryType } | literal("slist") ^^^ { SlistType }
+    def basetype: Parser[Type] = {
+      "bool" ^^^ { BoolType } | "byte" ^^^ { ByteType } | "i16" ^^^ { Int16Type } |
+      "i32" ^^^ { Int32Type } | "i64" ^^^ { Int64Type } | "double" ^^^ { DoubleType } |
+      "string" ^^^ { StringType } | "binary" ^^^ { BinaryType } | "slist" ^^^ { SlistType }
     }
   
     def containertype = maptype | settype | listtype
 
-    def maptype = ((literal("map") ~ opt(cpptype) ~ elem('<') ~> fieldtype <~ elem(',')) ~ fieldtype <~ elem('>')) ^^
-      { case v => new MapType(v._1, v._2) }
+    def maptype: Parser[MapType] = (("map" ~ opt(cpptype) ~ '<' ~> fieldtype <~ ',') ~ fieldtype <~ '>') ^^
+      { case keyType~valueType => new MapType(keyType, valueType) }
 
-    def settype = (literal("set") ~ opt(cpptype) ~ elem('<') ~> fieldtype <~ elem('>')) ^^ { new SetType(_) }
+    def settype: Parser[SetType] = ("set" ~ opt(cpptype) ~ '<' ~> fieldtype <~ '>') ^^ { new SetType(_) }
 
-    def listtype = (literal("list") ~ elem('<') ~> fieldtype <~ elem('>') ~ opt(cpptype)) ^^ { new ListType(_) }
+    def listtype: Parser[ListType] = ("list" ~ '<' ~> fieldtype <~ '>' ~ opt(cpptype)) ^^ { new ListType(_) }
 
     // Defined for compatibility, but unused
-    def cpptype = literal("cpp_type") ~ literal
+    def cpptype: Parser[Any] = "cpp_type" ~ literal
 }
 

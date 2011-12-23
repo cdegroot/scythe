@@ -105,4 +105,10 @@ class Parsing extends FlatSpecForParsers with ThriftParsers {
     parsing("typedef i32 myInt") should equal(Typedef("myInt", Int32Type))
     parsing("typedef map<i32, string> myMap") should equal(Typedef("myMap", MapType(Int32Type, StringType)))
   }
+
+  they should "parse const definitions" in {
+    implicit val parserToTest = const
+
+    parsing("const i32 foo = 1") should equal(Const("foo", Int32Type, IntegerConstant(1)))
+  }
 }

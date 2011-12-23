@@ -13,4 +13,10 @@ class Parsing extends FlatSpecForParsers with ThriftParsers {
     parsing("i64") should equal(Int64Type)
     parsing("bool") should equal(BoolType)
   }
+  
+  they should "parse a set definition" in {
+    implicit val parserToTest = settype
+    
+    parsing("set<double>") should equal(SetType(DoubleType))
+  }
 }

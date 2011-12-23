@@ -13,6 +13,7 @@ object StringType extends Type
 object BinaryType extends Type
 object SlistType extends Type
 case class ListType(t : Type) extends Type
+case class SetType(t : Type) extends Type
 
 trait ThriftParsers extends RegexParsers with ThriftLexers {
   // note: we left the production rule names the same as in the Thrift IDL for easy reference
@@ -78,8 +79,8 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
 //
 //  def maptype = "map" ~ cpptype? ~ "<" ~ fieldtype ~ "," ~ fieldtype ~ ">"
 //
-//  def settype = "set" ~ cpptype? ~ "<" ~ fieldtype ~ ">"
-//
+    def settype = (literal("set") ~ opt(cpptype) ~ elem('<') ~> fieldtype <~ elem('>')) ^^ { new SetType(_) }
+
     def listtype = (literal("list") ~ elem('<') ~> fieldtype <~ elem('>') ~ opt(cpptype)) ^^ { new ListType(_) }
 
     // Defined for compatibility, but unused

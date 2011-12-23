@@ -34,16 +34,41 @@ class Parsing extends FlatSpecForParsers with ThriftParsers {
     parsing("2: required string quux") should equal(Field(StringType, "quux", Some(IntegerConstant(2)), true))
   }
 
+  def buzzerFunctionAst: Function = {
+    Function(Int32Type, "buzzer",
+      List(Field(Int32Type, "length", Some(IntegerConstant(1)), false),
+        Field(BoolType, "loud", Some(IntegerConstant(2)), false)), List(), false)
+  }
+
+  def helloFunctionAst: Function = {
+    Function(VoidType, "hello", List(), List(), false)
+  }
+
   they should "parse function declarations" in {
     implicit val parserToTest = function
 
-    parsing("void hello()") should equal(Function(VoidType, "hello", List(), List(), false))
+    parsing("void hello()") should equal(helloFunctionAst)
     parsing("oneway void hello()") should equal(Function(VoidType, "hello", List(), List(), true))
-    parsing("i32 buzzer(1: i32 length, 2: bool loud)") should equal(Function(Int32Type, "buzzer",
-      List(Field(Int32Type, "length", Some(IntegerConstant(1)), false),
-           Field(BoolType, "loud", Some(IntegerConstant(2)), false)), List(), false))
+    parsing("i32 buzzer(1: i32 length, 2: bool loud)") should equal(buzzerFunctionAst)
 
     parsing("void hello() throws (1: FooException foo)") should equal(Function(VoidType, "hello", List(),
       List(Field(ComplexType("FooException"), "foo", Some(IntegerConstant(1)), false)), false))
+  }
+
+  they should "parse service definitions" in {
+    implicit val parserToTest = service
+
+    parsing("""
+      service test {
+        void hello(),
+        i32 buzzer(1: i32 length, 2: bool loud)
+      }""") should equal(Service("test", None, List(helloFunctionAst, buzzerFunctionAst)))
+
+    parsing("""
+      service test extends base {
+        void hello(),
+        i32 buzzer(1: i32 length, 2: bool loud)
+      }""") should equal(Service("test", Some("base"), List(helloFunctionAst, buzzerFunctionAst)))
+
   }
 }

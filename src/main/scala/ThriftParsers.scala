@@ -55,11 +55,11 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
 //
 //  def struct = "struct" ~ identifier ~  "{" ~ field* ~ "}"
 //
-    def exception: Parser[Exception] = "exception" ~> identifier ~ "{" ~ repsep(field, listseparator) ~ "}" ^^ {
+    def exception: Parser[Exception] = "exception" ~> identifier ~ "{" ~ zeroOrMoreOf(field) ~ "}" ^^ {
       case id~"{"~fields~"}" => new Exception(id.name, fields)
     }
 
-    def service: Parser[Service] = "service" ~ identifier ~ opt("extends" ~> identifier) ~ "{" ~ repsep(function, listseparator) ~ "}" ^^ {
+    def service: Parser[Service] = "service" ~ identifier ~ opt("extends" ~> identifier) ~ "{" ~ zeroOrMoreOf(function) ~ "}" ^^ {
       case "service"~sname~extendsOpt~"{"~funlist~"}" =>
         val extendsName = extendsOpt.flatMap(id => Some(id.name))
         new Service(sname.name, extendsName, funlist)
@@ -75,7 +75,7 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
 
     def fieldreq: Parser[Boolean] = "required" ^^^ { true } | "optional" ^^^ { false }
 
-    def function: Parser[Function] = functionOneWay ~ functiontype ~ identifier ~ "(" ~ repsep(field, listseparator) ~ ")" ~ opt(throws) ^^ {
+    def function: Parser[Function] = functionOneWay ~ functiontype ~ identifier ~ "(" ~ zeroOrMoreOf(field) ~ ")" ~ opt(throws) ^^ {
       case fow~ftype~fid~"("~fields~")"~throwsOpt =>
         val throwsList = throwsOpt.getOrElse(List())
         new Function(ftype, fid.name, fields, throwsList, fow)
@@ -87,7 +87,7 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
 
     def functiontype: Parser[Type] =  "void" ^^^ { VoidType } | fieldtype
 
-    def throws: Parser[List[Field]] = "throws" ~ "(" ~> repsep(field, listseparator) <~ ")" ^^ { case list => list }
+    def throws: Parser[List[Field]] = "throws" ~ "(" ~> zeroOrMoreOf(field) <~ ")" ^^ { case list => list }
 
     def fieldtype: Parser[Type] = basetype | containertype | identifier ^^ { case id => ComplexType(id.name)}
 
@@ -110,5 +110,8 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
 
     // Defined for compatibility, but unused
     def cpptype: Parser[Any] = "cpp_type" ~ literal
+
+    // Utilities
+    def zeroOrMoreOf[T](p: Parser[T]): Parser[List[T]] = repsep(p, listseparator)
 }
 

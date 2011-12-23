@@ -17,9 +17,9 @@ case class ListType(t: Type) extends Type
 case class SetType(t: Type) extends Type
 case class MapType(keyType: Type,  valueType: Type) extends Type
 case class ComplexType(t: String) extends Type
-
 case class Field(t: Type,  n: String, id: Option[IntegerConstant], required: Boolean) extends Node
 case class Function(t: Type,  n: String,  args: List[Field], throws: List[Field], isOneway: Boolean) extends Node
+
 abstract class ToplevelNode extends Node // Mostly there for documentation
 case class Service(n: String,  baseService: Option[String],  functions: List[Function]) extends ToplevelNode
 case class Exception(n: String, args: List[Field]) extends ToplevelNode
@@ -28,29 +28,42 @@ case class Enum(n: String,  elems: List[EnumElem]) extends ToplevelNode
 case class EnumElem(n: String,  value: Option[Int]) extends Node
 case class Typedef(n: String,  t: Type) extends ToplevelNode
 case class Const(n: String,  t: Type,  value: Constant) extends ToplevelNode
-case class Document(definitions: List[ToplevelNode])
+
+abstract class HeaderNode extends Node
+// Simple modeling of namespaces for now, can always be extended.
+case class Namespace(scope: String,  identifier: String) extends HeaderNode
+case class Include(n: String) extends HeaderNode
+case class CppInclude(n: String) extends HeaderNode
+case class Header(elems: List[HeaderNode]) extends Node
+
+case class Document(header: Header, definitions: List[ToplevelNode])
+
 
 trait ThriftParsers extends RegexParsers with ThriftLexers {
   // note: we left the production rule names the same as in the Thrift IDL for easy reference
 
   // Parser from the Thrift IDL description page minus the Facebook xsd internal crap
 //  def document = header* ~ definition*
-    def document: Parser[Document] = zeroOrMoreOf(definition) ^^ { new Document(_) }
-//
-//  def header = (include | cppinclude | namespace)
-//
-//  def include = "include" ~ literal
-//
-//  def cppinclude = "cpp_include" ~ literal
-//
-//  def namespace = (
-//    "namespace" ~ ( namespacescope ~ identifier | "smaltalk.category" ~ stidentifier | "smalltalk.prefix" ~ identifier ) |
-//    "php_namespace" ~ literal  |
-//    "xsd_namespace" ~ literal
-//  )
-//
-//  def namespacescope = "*" | "cpp" | "java" | "py" | "perl" | "rb" | "cocoa" | "csharp"
-//
+    def document: Parser[Document] = header ~ zeroOrMoreOf(definition) ^^ { case header~body => new Document(header, body) }
+
+    def header: Parser[Header] = rep(includeFile | cppincludeFile | namespace) ^^ { case stuff => Header(stuff) }
+
+    // TODO[cdg] beats me why we have to be explicit about whitespace here...
+    def includeFile: Parser[Include] = regex("include\\s+"r) ~> literal ^^ { case lit => Include(lit.value)}
+
+    def cppincludeFile: Parser[CppInclude] = regex("cpp_include\\s+".r) ~> literal ^^ { case lit => CppInclude(lit.value)}
+
+    def namespace: Parser[Namespace] = {
+       ( "namespace" ~> ( namespacescope ~ identifier ^^ { case scope~id => Namespace(scope, id.name) }
+                       | "smaltalk.category" ~ stidentifier ^^ { case scope~id => Namespace(scope, id) }
+                       | "smalltalk.prefix" ~ identifier ^^ { case scope~id => Namespace(scope, id.name) }
+                       )) |
+       "php_namespace" ~> literal ^^ { case id => Namespace("php", id.value) } |
+       "xsd_namespace" ~> literal ^^ { case id => Namespace("xsd", id.value) }
+    }
+
+    def namespacescope: Parser[String] = "*" | "cpp" | "java" | "py" | "perl" | "rb" | "cocoa" | "csharp"
+
     def definition: Parser[ToplevelNode] = const | typedef | enum | struct | exception | service
 
     def const: Parser[Const] = "const" ~> fieldtype ~ identifier ~ "=" ~ constvalue ^^ {

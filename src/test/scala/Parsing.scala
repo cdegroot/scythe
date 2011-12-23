@@ -124,16 +124,50 @@ class Parsing extends FlatSpecForParsers with ThriftParsers {
     parsing("const i32 foo = 1") should equal(Const("foo", Int32Type, IntegerConstant(1)))
   }
 
-  they should "whole thrift files" in {
+  they should "parse include statements" in {
+    implicit val parserToTest = includeFile
+
+    parsing("include 'foo.bar'") should equal(Include("foo.bar"))
+  }
+
+  they should "parse namespace definitions" in {
+    implicit val parserToTest = namespace
+
+    parsing("namespace java com.evrl.test.namespace") should equal(Namespace("java", "com.evrl.test.namespace"))
+  }
+
+  def myHeaderAst: Header = {
+    Header(List(
+      Include("common.thrift"),
+      Namespace("java", "com.evrl.test.namespace")
+    ))
+  }
+
+  they should "parse header elements" in {
+    implicit val parserToTest = header
+
+    parsing("""
+      include 'common.thrift'
+      namespace java com.evrl.test.namespace
+    """) should equal(myHeaderAst)
+  }
+
+  they should "parse whole thrift files" in {
     implicit val parserToTest = document
 
     parsing("""
+      include 'common.thrift'
+      namespace java com.evrl.test.namespace
+
       typedef map<i32, string> myMap;
-      enum foo { bar, baz = 3 };
+      enum myEnum { bar, baz = 3 };
       service myService {
         void hello(),
         i32 buzzer(1: i32 length, 2: bool loud)
       }
-    """) should equal(Document(List(myMapAst, myEnumAst, myServiceAst)))
+    """) should equal(Document(
+        myHeaderAst,
+        List(myMapAst, myEnumAst, myServiceAst)))
   }
+
 }

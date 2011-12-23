@@ -18,8 +18,8 @@ class FlatSpecForParsers extends FlatSpec with ShouldMatchers {
     val input = new CharSequenceReader(s)
     phraseParser(input) match {
         case Success(t,_)     => t
-        case NoSuccess(msg,_) => throw new IllegalArgumentException(
-                                     "Could not parse '" + s + "': " + msg)
+        case NoSuccess(msg,next) => throw new IllegalArgumentException(
+                  "[" + next.pos + "] Could not parse: " + msg + "\n\n" + next.pos.longString)
     }
   }
 

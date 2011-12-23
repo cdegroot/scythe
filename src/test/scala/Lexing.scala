@@ -11,6 +11,7 @@ class Lexing extends FlatSpecForParsers with ThriftLexers {
 
     parsing("aValidIdentifier") should equal(Identifier("aValidIdentifier"))
     parsing("another_valid_identifier") should equal(Identifier("another_valid_identifier"))
+    parsing("alsoValid32") should equal(Identifier("alsoValid32"))
     assertFail("an invalid identifier")
   }
 

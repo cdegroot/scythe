@@ -25,6 +25,7 @@ case class Exception(n: String, args: List[Field]) extends Node
 case class Struct(n: String,  args: List[Field]) extends Node
 case class Enum(n: String,  elems: List[EnumElem]) extends Node
 case class EnumElem(n: String,  value: Option[Int]) extends Node
+case class Typedef(n: String,  t: Type) extends Node
 
 trait ThriftParsers extends RegexParsers with ThriftLexers {
   // note: we left the production rule names the same as in the Thrift IDL for easy reference
@@ -50,8 +51,10 @@ trait ThriftParsers extends RegexParsers with ThriftLexers {
 //
 //  def const = "const" ~ fieldtype ~ identifier ~ "=" ~ constvalue ~ listseparator?
 //
-//  def typedef = "typedef" ~ definitiontype ~ identifier
-//
+    def typedef: Parser[Typedef] = "typedef" ~> definitiontype ~ identifier ^^ {
+      case deftype~id => new Typedef(id.name, deftype)
+    }
+
     def enum: Parser[Enum] = "enum" ~> identifier ~ "{" ~ zeroOrMoreOf(enumElem) ~ "}" ^^ {
       case id~"{"~elems~"}" => new Enum(id.name, elems)
     }

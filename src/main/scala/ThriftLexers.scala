@@ -30,10 +30,10 @@ trait ThriftLexers extends RegexParsers {
 
   def literal = (( '\"' ~>  regex("[^\"]*"r) <~ '\"' ) | ( '\'' ~> regex("[^']*"r) <~ '\'' )) ^^ { new StringConstant(_) }
 
-  def identifier = regex("[a-zA-Z_][a-zA-Z0-0._]*"r) ^^ { new Identifier(_) }
+  def identifier = regex("[a-zA-Z_][a-zA-Z0-9._]*"r) ^^ { new Identifier(_) }
 
   // For Thrift compatibility, but we don't act on it
-  def stidentifier = regex("[a-zA-Z_][a-zA-Z0-0._-]*"r)
+  def stidentifier = regex("[a-zA-Z_][a-zA-Z0-9._-]*"r)
 
   def listseparator  = elem(',') | elem(';')
 

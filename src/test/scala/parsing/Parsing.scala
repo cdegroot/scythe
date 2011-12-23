@@ -1,3 +1,5 @@
+package parsing
+
 
 class Parsing extends FlatSpecForParsers with ThriftParsers {
 
@@ -172,5 +174,4 @@ class Parsing extends FlatSpecForParsers with ThriftParsers {
         myHeaderAst,
         List(myMapAst, myEnumAst, myServiceAst)))
   }
-
 }

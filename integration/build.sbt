@@ -1,5 +1,7 @@
 
 libraryDependencies ++= Seq(
+    "org.apache.thrift" % "libthrift" % "0.8.0", 
+    "org.slf4j" % "slf4j-simple" % "1.6.4",
 	"org.scalatest" %% "scalatest"        % "1.6.1" % "test",
 	"org.jmock"      % "jmock"            % "2.5.1" % "test",
 	"org.jmock"      % "jmock-legacy"     % "2.5.1" % "test",

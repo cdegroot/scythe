@@ -9,74 +9,69 @@ import util.parsing.input.CharSequenceReader
  * so sooner or later we'll emit Thrift specific things here in one go :)
  */
 
-/** A little class that indents for you */
+abstract class ScalaNode
+case class ScalaTopLevel(nodes: List[ScalaNode] = Nil) extends ScalaNode
+case class Argument(name: String,  typeName: String)
+case class ArgumentList(args: List[Argument]) extends ScalaNode
+case class Trait(name: String, defs: List[TraitDef]) extends ScalaNode
+case class TraitDef(name: String,  typeName: String,  args: ArgumentList) extends ScalaNode
+case class TraitImpl(name: String, body: List[Method]) extends ScalaNode
+case class Method(interface: TraitDef) extends ScalaNode
+
 case class Indenter(sb: StringBuilder = new StringBuilder, level: Int = 0) {
   def more = Indenter(sb, level + 2)
   def less = Indenter(sb, level - 2)
   def append(s: Any): Indenter = { sb.append(s); this }
   def indent(s: Any): Indenter = { sb.append(" " * level).append(s); this }
   def newline: Indenter = { sb.append("\n"); this }
+
+  def apply(f: (Indenter => Unit)) =  { f(this); this }
+
   override def toString = sb.toString
-
-  def apply(f: (Indenter => Unit)) = f(this)
 }
 
-abstract class ScalaNode {
-  def generateSource(indent: Indenter)
 
-}
-case class ScalaTopLevel(nodes: List[ScalaNode] = Nil) extends ScalaNode {
-  def generateSource: String = {
+trait ScalaCodeOutput {
+
+  def generateSource(node: ScalaNode): String = {
     val indent = new Indenter
-    generateSource(indent)
+    generateSource(node, indent)
     indent.toString
   }
-  def generateSource(indent: Indenter) {
-    nodes.map(_.generateSource(indent))
-  }
-}
-case class Trait(name: String, defs: List[TraitDef]) extends ScalaNode {
-  def generateSource(indent: Indenter) {
-    indent.indent("trait " + name + " {").newline
-    defs.map { definition => definition.generateSource(indent.more); indent.newline }
-    indent.indent("}").newline.newline
-  }
-}
-case class Argument(name: String,  typeName: String)
-case class ArgumentList(args: List[Argument]) {
-  def generateSource(indent: Indenter) {
-    indent.append(args.map { case Argument(name, typeName) =>
-      name + ": " + typeName
-    }.reduceLeft[String]{ (acc, part) => acc + ", " + part })
-  }
-}
-case class TraitDef(name: String,  typeName: String,  args: ArgumentList) extends ScalaNode {
-  def generateSource(indent: Indenter) {
-    indent.indent("def " + name + "(")
-    args.generateSource(indent)
-    indent.append("): ").append(typeName)
-  }
-}
+  def generateSource(node: ScalaNode,  indent: Indenter) {
+    node match {
+      case ScalaTopLevel(nodes) =>
+        nodes.map(generateSource(_, indent))
 
-case class TraitImpl(name: String, body: List[Method]) extends ScalaNode {
-  def generateSource(indent: Indenter) {
-    indent.indent("class " + name + "Impl extends " + name +" {").newline
-    body.map(_.generateSource(indent.more))
-    indent.append("}").newline.newline
-  }
-}
+      case ArgumentList(args) =>
+        indent.append(args.map { case Argument(name, typeName) =>
+          name + ": " + typeName
+        }.reduceLeft[String]{ (acc, part) => acc + ", " + part })
 
-case class Method(interface: TraitDef) extends ScalaNode {
-  def generateSource(indent: Indenter) {
-    interface.generateSource(indent)
-    indent.append(" = {").newline
+      case Trait(name, defs) =>
+        indent.indent("trait " + name + " {").newline
+        defs.map { definition => generateSource(definition, indent.more); indent.newline }
+        indent.indent("}").newline.newline
 
-    indent.more{ deeper =>
-        deeper.indent("""// Method body here""").newline
-        deeper.indent(""""Hello!"""").newline
+      case TraitDef(name,  typeName,  args) =>
+        indent.indent("def " + name + "(")
+        generateSource(args, indent)
+        indent.append("): ").append(typeName)
+
+      case TraitImpl(name, body) =>
+        indent.indent("class " + name + "Impl extends " + name +" {").newline
+        body.map(generateSource(_, indent.more))
+        indent.append("}").newline.newline
+
+      case Method(interface) =>
+        generateSource(interface,indent)
+        indent.append(" = {").newline
+        indent.more { deeper =>
+          deeper.indent("""// Method body here""").newline
+          deeper.indent(""""Hello!"""").newline
+        }
+        indent.indent("}").newline
     }
-
-    indent.indent("}").newline
   }
 }
 
@@ -84,7 +79,7 @@ case class Method(interface: TraitDef) extends ScalaNode {
  * Generate a simple server stub.
  */
 class SimpleServerStubGenerator
-  extends ThriftParsers {
+  extends ThriftParsers with ScalaCodeOutput {
 
   def generate(source: String): String = {
     val phraseParser = phrase(document)
@@ -95,7 +90,7 @@ class SimpleServerStubGenerator
                   "[" + next.pos + "] Could not parse: " + msg + "\n\n" + next.pos.longString)
     }
 
-    generateCodeFromAst(ast: Document).generateSource
+    generateSource(generateCodeFromAst(ast: Document))
   }
 
   def generateCodeFromAst(ast: Document): ScalaTopLevel = new ScalaTopLevel(ast.definitions.flatMap(generateDefinitions(_)))

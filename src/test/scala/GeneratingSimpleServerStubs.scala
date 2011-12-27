@@ -11,6 +11,15 @@ class GeneratingSimpleServerStubs extends FlatSpec with ShouldMatchers {
       }""")
     output should equal("""trait test {
   def hello(message: String, echo: Integer): String
-}""")
+}
+
+class testImpl extends test {
+  def hello(message: String, echo: Integer): String = {
+    // Method body here
+    "Hello!"
+  }
+}
+
+""")
   }
 }

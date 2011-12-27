@@ -15,7 +15,10 @@ case class Indenter(sb: StringBuilder = new StringBuilder, level: Int = 0) {
   def less = Indenter(sb, level - 2)
   def append(s: Any): Indenter = { sb.append(s); this }
   def indent(s: Any): Indenter = { sb.append(" " * level).append(s); this }
+  def newline: Indenter = { sb.append("\n"); this }
   override def toString = sb.toString
+
+  def apply(f: (Indenter => Unit)) = f(this)
 }
 
 abstract class ScalaNode {
@@ -34,9 +37,9 @@ case class ScalaTopLevel(nodes: List[ScalaNode] = Nil) extends ScalaNode {
 }
 case class Trait(name: String, defs: List[TraitDef]) extends ScalaNode {
   def generateSource(indent: Indenter) {
-    indent.indent("trait " + name + " {\n")
-    defs.map(_.generateSource(indent.more))
-    indent.indent("}")
+    indent.indent("trait " + name + " {").newline
+    defs.map { definition => definition.generateSource(indent.more); indent.newline }
+    indent.indent("}").newline.newline
   }
 }
 case class Argument(name: String,  typeName: String)
@@ -51,10 +54,35 @@ case class TraitDef(name: String,  typeName: String,  args: ArgumentList) extend
   def generateSource(indent: Indenter) {
     indent.indent("def " + name + "(")
     args.generateSource(indent)
-    indent.append("): ").append(typeName).append("\n")
+    indent.append("): ").append(typeName)
   }
 }
 
+case class TraitImpl(name: String, body: List[Method]) extends ScalaNode {
+  def generateSource(indent: Indenter) {
+    indent.indent("class " + name + "Impl extends " + name +" {").newline
+    body.map(_.generateSource(indent.more))
+    indent.append("}").newline.newline
+  }
+}
+
+case class Method(interface: TraitDef) extends ScalaNode {
+  def generateSource(indent: Indenter) {
+    interface.generateSource(indent)
+    indent.append(" = {").newline
+
+    indent.more{ deeper =>
+        deeper.indent("""// Method body here""").newline
+        deeper.indent(""""Hello!"""").newline
+    }
+
+    indent.indent("}").newline
+  }
+}
+
+/**
+ * Generate a simple server stub.
+ */
 class SimpleServerStubGenerator
   extends ThriftParsers {
 
@@ -70,19 +98,24 @@ class SimpleServerStubGenerator
     generateCodeFromAst(ast: Document).generateSource
   }
 
-  def generateCodeFromAst(ast: Document): ScalaTopLevel = new ScalaTopLevel(ast.definitions.map(generateDefinitions(_)))
+  def generateCodeFromAst(ast: Document): ScalaTopLevel = new ScalaTopLevel(ast.definitions.flatMap(generateDefinitions(_)))
 
 
   def generateDefinitions(definition: ToplevelNode) = definition match {
       case service: Service => generateService(service)
   }
 
-  def generateService(service: Service) = generateInterface(service: Service)
+  def generateService(service: Service) : List[ScalaNode] =
+    List(generateInterface(service: Service), generateImplementation(service: Service))
 
   def generateInterface(service: Service) = Trait(service.n, service.functions.map(generateInterfaceMethod(_)))
 
   def generateInterfaceMethod(function: Function) = TraitDef(function.n,  typeToScala(function.t),
     ArgumentList(function.args.map( arg => Argument(arg.n, typeToScala(arg.t)))))
+
+  def generateImplementation(service: Service) = TraitImpl(service.n,  service.functions.map(generateImplementationMethod(_)))
+
+  def generateImplementationMethod(function: Function) = Method(generateInterfaceMethod(function))
 
   def typeToScala(t: Type): String = t match {
       case BoolType => "Boolean"

@@ -8,12 +8,11 @@ code closer to Scala-ness. I'm not extending the Thrift C++ compiler because, fr
 I can't be bothered. 
 
 
-Caveat
-======
+Building
+========
 
-I want to do this cleanly. Therefore, I don't generate code but generate from the Thrift
-AST a Scala AST which I print with the tools in the scala-refactoring library. 
+Use SBT 0.11.1. SBT is a <expletives deleted> so don't count on any other
+version working. 
 
-However, the Maven artifacts for that library don't seem to be very clean, so I'm relying
-on a local installation. See build.sbt for details. 
+No main at the moment, so peek around in the tests :)
 

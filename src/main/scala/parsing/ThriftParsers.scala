@@ -38,7 +38,7 @@ case class Include(n: String) extends HeaderNode
 case class CppInclude(n: String) extends HeaderNode
 case class Header(elems: List[HeaderNode]) extends Node
 
-case class Document(header: Header, definitions: List[ToplevelNode])
+case class Document(header: Header, definitions: List[ToplevelNode]) extends Node
 
 
 trait ThriftParsers extends RegexParsers with ThriftLexers {

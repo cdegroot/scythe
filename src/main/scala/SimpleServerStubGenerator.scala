@@ -2,56 +2,89 @@ import parsing._
 import util.parsing.input.CharSequenceReader
 
 /**
- * Spike to see how code generation will look like
+ * Spike to see how code generation will look like. If you think this here duplicates
+ * stuff from the scala compiler: it does. That stuff is just too complex to easily
+ * reuse, IMNSHO.... We won't probably go as far as building a fully covering
+ * structure for any Scala program, the idea is that this is a thrift generator
+ * so sooner or later we'll emit Thrift specific things here in one go :)
  */
+
+/** A little class that indents for you */
+case class Indenter(sb: StringBuilder = new StringBuilder, level: Int = 0) {
+  def more = Indenter(sb, level + 2)
+  def less = Indenter(sb, level - 2)
+  def append(s: Any): Indenter = { sb.append(s); this }
+  def indent(s: Any): Indenter = { sb.append(" " * level).append(s); this }
+  override def toString = sb.toString
+}
+
+abstract class ScalaNode {
+  def generateSource(indent: Indenter)
+
+}
+case class ScalaTopLevel(nodes: List[ScalaNode] = Nil) extends ScalaNode {
+  def generateSource: String = {
+    val indent = new Indenter
+    generateSource(indent)
+    indent.toString
+  }
+  def generateSource(indent: Indenter) {
+    nodes.map(_.generateSource(indent))
+  }
+}
+case class Trait(name: String, defs: List[TraitDef]) extends ScalaNode {
+  def generateSource(indent: Indenter) {
+    indent.indent("trait " + name + " {\n")
+    defs.map(_.generateSource(indent.more))
+    indent.indent("}")
+  }
+}
+case class Argument(name: String,  typeName: String)
+case class ArgumentList(args: List[Argument]) {
+  def generateSource(indent: Indenter) {
+    indent.append(args.map { case Argument(name, typeName) =>
+      name + ": " + typeName
+    }.reduceLeft[String]{ (acc, part) => acc + ", " + part })
+  }
+}
+case class TraitDef(name: String,  typeName: String,  args: ArgumentList) extends ScalaNode {
+  def generateSource(indent: Indenter) {
+    indent.indent("def " + name + "(")
+    args.generateSource(indent)
+    indent.append("): ").append(typeName).append("\n")
+  }
+}
+
 class SimpleServerStubGenerator
   extends ThriftParsers {
 
   def generate(source: String): String = {
     val phraseParser = phrase(document)
     val input = new CharSequenceReader(source)
-    val ast = phraseParser(input) match {
+    val ast: Document = phraseParser(input) match {
         case Success(t,_)     => t
         case NoSuccess(msg,next) => throw new IllegalArgumentException(
                   "[" + next.pos + "] Could not parse: " + msg + "\n\n" + next.pos.longString)
     }
 
-    generateCodeFromAst(ast: Document)
+    generateCodeFromAst(ast: Document).generateSource
   }
 
+  def generateCodeFromAst(ast: Document): ScalaTopLevel = new ScalaTopLevel(ast.definitions.map(generateDefinitions(_)))
 
-  def generateCodeFromAst(ast: Document): String = {
-    val sb = new StringBuilder
-    ast.definitions.map(generateDefinitions(_, sb))
-    sb.toString
+
+  def generateDefinitions(definition: ToplevelNode) = definition match {
+      case service: Service => generateService(service)
   }
 
-  def generateDefinitions(definition: ToplevelNode, sb: StringBuilder) {
-    definition match {
-      case service: Service => generateService(service, sb)
-    }
-  }
+  def generateService(service: Service) = generateInterface(service: Service)
 
-  def generateService(service: Service,  sb: StringBuilder) {
-    generateInterface(service: Service,  sb: StringBuilder)
-  }
+  def generateInterface(service: Service) = Trait(service.n, service.functions.map(generateInterfaceMethod(_)))
 
-  def generateInterface(service: Service,  sb: StringBuilder) {
-    sb.append("trait " + service.n + " {\n")
-    service.functions.map(generateInterfaceMethod(_, sb))
-    sb.append("\n}")
-  }
+  def generateInterfaceMethod(function: Function) = TraitDef(function.n,  typeToScala(function.t),
+    ArgumentList(function.args.map( arg => Argument(arg.n, typeToScala(arg.t)))))
 
-  def generateInterfaceMethod(function: Function, sb: StringBuilder) {
-    sb.append("  def " + function.n + "(")
-    sb.append(function.args.map { arg =>
-      arg.n + ": " + typeToScala(arg.t)
-    }.reduceLeft[String]{ (acc, part) => acc + ", " + part })
-    sb.append("): ").append(typeToScala(function.t))
-  }
-
-  def typeToScala(t: Type): String = {
-    t match {
+  def typeToScala(t: Type): String = t match {
       case BoolType => "Boolean"
       case ByteType => "Byte"
       case Int16Type => "Short"
@@ -65,6 +98,5 @@ class SimpleServerStubGenerator
       case t: SetType => "Set[" + typeToScala(t.t) + "]"
       case t: MapType => "Map[" + typeToScala(t.keyType) + ", " + typeToScala(t.valueType) + "]"
       case t: ComplexType => t.t
-    }
   }
 }

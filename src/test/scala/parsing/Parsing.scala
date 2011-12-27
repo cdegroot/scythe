@@ -1,5 +1,6 @@
 package parsing
 
+import ThriftAst._
 
 class Parsing extends FlatSpecForParsers with ThriftParsers {
 

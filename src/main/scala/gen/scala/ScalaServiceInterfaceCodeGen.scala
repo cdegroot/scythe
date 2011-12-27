@@ -1,7 +1,7 @@
 package gen.scala
 
 import gen.util.Indenter
-import parsing._
+import parsing.ThriftAst._
 
 /**
  * Generates the service interface

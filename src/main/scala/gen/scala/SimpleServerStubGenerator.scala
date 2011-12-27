@@ -1,6 +1,7 @@
 package gen.scala
 
-import parsing._
+import parsing.ThriftAst._
+import parsing.ThriftParser
 import util.parsing.input.CharSequenceReader
 
 /**
@@ -10,7 +11,7 @@ class SimpleServerStubGenerator
   {
 
   def generate(source: String): String = {
-    val ast: Document = Parser.parseToAst(source)
+    val ast: Document = ThriftParser.parseToAst(source)
     val parts = List(new ScalaServiceInterfaceCodeGen, new ServerImplementationCodeGen)
     parts.map(_.generateSource(ast)).reduceLeft((acc,part) => acc + part)
   }

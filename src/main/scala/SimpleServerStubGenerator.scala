@@ -10,13 +10,11 @@ import util.parsing.input.CharSequenceReader
  */
 
 abstract class ScalaNode
-case class ScalaTopLevel(nodes: List[ScalaNode] = Nil) extends ScalaNode
+case class ScalaTopLevelNode(nodes: List[ScalaNode] = Nil) extends ScalaNode
 case class Argument(name: String,  typeName: String)
 case class ArgumentList(args: List[Argument]) extends ScalaNode
-case class Trait(name: String, defs: List[TraitDef]) extends ScalaNode
-case class TraitDef(name: String,  typeName: String,  args: ArgumentList) extends ScalaNode
-case class TraitImpl(name: String, body: List[Method]) extends ScalaNode
-case class Method(interface: TraitDef) extends ScalaNode
+case class ScalaService(name: String, defs: List[ScalaFunction]) extends ScalaNode
+case class ScalaFunction(name: String,  typeName: String,  args: ArgumentList) extends ScalaNode
 
 case class Indenter(sb: StringBuilder = new StringBuilder, level: Int = 0) {
   def more = Indenter(sb, level + 2)
@@ -30,47 +28,81 @@ case class Indenter(sb: StringBuilder = new StringBuilder, level: Int = 0) {
   override def toString = sb.toString
 }
 
-
-trait ScalaCodeOutput {
-
+/**
+ * Base class for code generation. Contains a (hopefully) common interface and
+ * some utilities.
+ */
+trait CodeGen {
   def generateSource(node: ScalaNode): String = {
     val indent = new Indenter
     generateSource(node, indent)
     indent.toString
   }
-  def generateSource(node: ScalaNode,  indent: Indenter) {
+  def generateSource(node: ScalaNode,  indent: Indenter)
+
+  // Common helpers
+
+  def generateFunctionDef(function: ScalaFunction,  indent: Indenter) {
+    indent.indent("def " + function.name + "(")
+    generateArgumentList(function.args, indent)
+    indent.append("): ").append(function.typeName)
+  }
+
+  def generateArgumentList(argumentList: ArgumentList,  indent: Indenter) {
+    indent.append(argumentList.args.map { case Argument(name, typeName) =>
+          name + ": " + typeName
+    }.reduceLeft[String]{ (acc, part) => acc + ", " + part })
+  }
+}
+
+/**
+ * Generates the service interface
+ */
+class ScalaServiceInterfaceCodeGen extends CodeGen {
+
+  override def generateSource(node: ScalaNode,  indent: Indenter) {
     node match {
-      case ScalaTopLevel(nodes) =>
+      case ScalaTopLevelNode(nodes) =>
         nodes.map(generateSource(_, indent))
 
-      case ArgumentList(args) =>
-        indent.append(args.map { case Argument(name, typeName) =>
-          name + ": " + typeName
-        }.reduceLeft[String]{ (acc, part) => acc + ", " + part })
-
-      case Trait(name, defs) =>
+      case ScalaService(name, defs) =>
         indent.indent("trait " + name + " {").newline
         defs.map { definition => generateSource(definition, indent.more); indent.newline }
         indent.indent("}").newline.newline
 
-      case TraitDef(name,  typeName,  args) =>
-        indent.indent("def " + name + "(")
-        generateSource(args, indent)
-        indent.append("): ").append(typeName)
+      case ScalaFunction(name,  typeName,  args) =>
+        generateFunctionDef(ScalaFunction(name,  typeName,  args), indent)
 
-      case TraitImpl(name, body) =>
+      case _ => // ignore
+    }
+  }
+}
+
+/**
+ * Generates the server-side implementation
+ */
+class ScalaServerImplementationCodeGen extends CodeGen {
+
+  override def generateSource(node: ScalaNode,  indent: Indenter) {
+    node match {
+      case ScalaTopLevelNode(nodes) =>
+        nodes.map(generateSource(_, indent))
+
+      case ScalaService(name, defs) =>
         indent.indent("class " + name + "Impl extends " + name +" {").newline
-        body.map(generateSource(_, indent.more))
+        defs.map(generateSource(_, indent.more))
         indent.append("}").newline.newline
 
-      case Method(interface) =>
-        generateSource(interface,indent)
+      case ScalaFunction(name,  typeName,  args) =>
+        generateFunctionDef(ScalaFunction(name,  typeName,  args), indent)
         indent.append(" = {").newline
         indent.more { deeper =>
           deeper.indent("""// Method body here""").newline
           deeper.indent(""""Hello!"""").newline
         }
         indent.indent("}").newline
+
+      case _ => // ignore
     }
   }
 }
@@ -79,7 +111,7 @@ trait ScalaCodeOutput {
  * Generate a simple server stub.
  */
 class SimpleServerStubGenerator
-  extends ThriftParsers with ScalaCodeOutput {
+  extends ThriftParsers {
 
   def generate(source: String): String = {
     val phraseParser = phrase(document)
@@ -90,27 +122,21 @@ class SimpleServerStubGenerator
                   "[" + next.pos + "] Could not parse: " + msg + "\n\n" + next.pos.longString)
     }
 
-    generateSource(generateCodeFromAst(ast: Document))
+    val tree = generateCodeFromAst(ast: Document)
+    val parts = List(new ScalaServiceInterfaceCodeGen(), new ScalaServerImplementationCodeGen)
+    parts.map(_.generateSource(tree)).reduceLeft((acc,part) => acc + part)
   }
 
-  def generateCodeFromAst(ast: Document): ScalaTopLevel = new ScalaTopLevel(ast.definitions.flatMap(generateDefinitions(_)))
-
+  def generateCodeFromAst(ast: Document): ScalaTopLevelNode = new ScalaTopLevelNode(ast.definitions.map(generateDefinitions(_)))
 
   def generateDefinitions(definition: ToplevelNode) = definition match {
       case service: Service => generateService(service)
   }
 
-  def generateService(service: Service) : List[ScalaNode] =
-    List(generateInterface(service: Service), generateImplementation(service: Service))
+  def generateService(service: Service) = ScalaService(service.n, service.functions.map(generateInterfaceMethod(_)))
 
-  def generateInterface(service: Service) = Trait(service.n, service.functions.map(generateInterfaceMethod(_)))
-
-  def generateInterfaceMethod(function: Function) = TraitDef(function.n,  typeToScala(function.t),
+  def generateInterfaceMethod(function: Function) = ScalaFunction(function.n,  typeToScala(function.t),
     ArgumentList(function.args.map( arg => Argument(arg.n, typeToScala(arg.t)))))
-
-  def generateImplementation(service: Service) = TraitImpl(service.n,  service.functions.map(generateImplementationMethod(_)))
-
-  def generateImplementationMethod(function: Function) = Method(generateInterfaceMethod(function))
 
   def typeToScala(t: Type): String = t match {
       case BoolType => "Boolean"

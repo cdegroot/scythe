@@ -4,10 +4,9 @@ import util.parsing.input.CharSequenceReader
 /**
  * Spike to see how code generation will look like
  */
-class SimpleServerStubGenerator extends ThriftParsers {
-  // TODO[cdg] automatic indentation
-  // TODO[cdg] implicit passing of string builder, indentation level, ...?
-  // TODO[cdg] less mixing of strings and code calls?
+class SimpleServerStubGenerator
+  extends ThriftParsers {
+
   def generate(source: String): String = {
     val phraseParser = phrase(document)
     val input = new CharSequenceReader(source)
@@ -17,10 +16,11 @@ class SimpleServerStubGenerator extends ThriftParsers {
                   "[" + next.pos + "] Could not parse: " + msg + "\n\n" + next.pos.longString)
     }
 
-    generateFromAst(ast)
+    generateCodeFromAst(ast: Document)
   }
 
-  def generateFromAst(ast: Document) = {
+
+  def generateCodeFromAst(ast: Document): String = {
     val sb = new StringBuilder
     ast.definitions.map(generateDefinitions(_, sb))
     sb.toString
